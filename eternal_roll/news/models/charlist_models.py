@@ -62,7 +62,7 @@ class CharList(models.Model):
 	skill = models.ManyToManyField(
 		'Skill',
 		through='CharSkill'
-		) 
+		)
 	
 	# invetnory
     # TODO разобраться что можно удалять что нет ))))))

@@ -1,6 +1,6 @@
 import io
 from rest_framework import serializers
-
+from django.db import transaction
 from .models import *
 
 class NewsSerializer(serializers.ModelSerializer):
@@ -18,6 +18,10 @@ class CategorySerializer(serializers.ModelSerializer):
 
 
 #ЧАРНИК
+class CharSkillSerializer(serializers.HyperlinkedModelSerializer):
+    class Meta:
+        model = CharSkill  #ссылается на промеждуточную табилцу 
+        fields = ('id',)
 
 class CharListSerializer(serializers.ModelSerializer):
     # user = serializers.HiddenField(default=serializers.CurrentUserDefault()) 
@@ -31,17 +35,27 @@ class CharListSerializer(serializers.ModelSerializer):
     # spell =  
     # #class_ability
     mastery_bonus =  serializers.IntegerField(read_only=True)
-    # rasa =  
+    # rasa =
     # klass =  
-    # skill =  
+    # skill =  CharSkillSerializer(source='skills', many=True)
+    skill = serializers.ListSerializer(child=serializers.PrimaryKeyRelatedField(queryset=Skill.objects.all()))
     # # invetnory
     # разобраться что можно удалять что нет ))))))
-
-
+    def update(self, instance, validated_data):
+        if validated_data.get('skill'):
+            with transaction.atomic(): # with контекстный менеджер ( открывает и сам закрывает соединение) 
+                # atomic - атомарность ( все или ничего) 
+                data = validated_data.pop('skill') # pop удаляет из словаря
+                CharSkill.objects.filter(char=instance).delete() 
+                CharSkill.objects.bulk_create( # в булк_креэай мы передаем список сырых обьек.
+                    [  #фишка булкриэйта то что идет 1 запрос вместо многих
+                        CharSkill(char=instance, skill=i) for i in data #список сырыйх обьектов
+                    ]
+                ) 
+        return super().update(instance, validated_data) 
     class Meta:
         model = CharList 
         fields = "__all__"
-    
     
 
 class RasaSerializer(serializers.ModelSerializer):
